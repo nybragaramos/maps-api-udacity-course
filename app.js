@@ -91,6 +91,9 @@ function initMap() {
   document.getElementById('zoom-to-area').addEventListener('click', function () {
     zoomToArea();
   });
+  document.getElementById('search-within-time').addEventListener('click', function () {
+    searchWithinTime();
+  })
   
   /*Add an event listener so that the polygon is captured, call the searchWithinPolygon function. 
     This will show the markers in the polygon, and hide any outside of it.*/
@@ -219,9 +222,9 @@ function searchWithinPolygon() {
   show all listings, then decide to focus on one area of the map.*/
 function zoomToArea() {
   // Initialize the geocoder.
-  var geocoder = new google.maps.Geocoder();
+  const geocoder = new google.maps.Geocoder();
   // Get the address or place that the user entered.
-  var address = document.getElementById('zoom-to-area-text').value;
+  const address = document.getElementById('zoom-to-area-text').value;
   // Make sure the address isn't blank.
   if (address == '') {
     window.alert('You must enter an area, or address.');
@@ -235,11 +238,99 @@ function zoomToArea() {
         if (status == google.maps.GeocoderStatus.OK) {
           map.setCenter(results[0].geometry.location);
           map.setZoom(15);
+          console.log(results[0].formatted_address);
+          console.log('lat: ', results[0].geometry.location.lat());
+          console.log('lng: ', results[0].geometry.location.lng());
+
         } else {
           window.alert('We could not find that location - try entering a more' +
               ' specific place.');
         }
       });
+  }
+}
+
+/*This function allows the user to input a desired travel time, in minutes,
+ and a travel mode, and a location - and only show the listings that are 
+ within that travel time (via that travel mode) of the location*/
+function searchWithinTime() {
+  // Initialize the distance matrix service.
+  const distanceMatrixService = new google.maps.DistanceMatrixService;
+  const address = document.getElementById('search-within-time-text').value;
+  // Check to make sure the place entered isn't blank.
+  if (address == '') {
+    window.alert('You must enter an address.');
+  } else {
+    hideListings();
+    // Use the distance matrix service to calculate the duration of the
+    // routes between all our markers, and the destination address entered
+    // by the user. Then put all the origins into an origin matrix.
+    let origins = [];
+    origins = markers.map(marker => {
+      return(marker.position);
+    })
+
+    const destination = address;
+    const mode = document.getElementById('mode').value;
+    // Now that both the origins and destination are defined, get all the
+    // info for the distances between them.
+    distanceMatrixService.getDistanceMatrix({
+      origins: origins,
+      destinations: [destination],
+      travelMode: google.maps.TravelMode[mode],
+      unitSystem: google.maps.UnitSystem.IMPERIAL,
+    }, function(response, status) {
+      (status !== google.maps.DistanceMatrixStatus.OK) ? window.alert('Error was: ' + status) :
+        displayMarkersWithinTime(response)
+    });
+  }
+}
+
+// This function will go through each of the results, and,
+// if the distance is LESS than the value in the picker, show it on the map.
+function displayMarkersWithinTime(response) {
+  const maxDuration = document.getElementById('max-duration').value;
+  const origins = response.originAddresses;
+  const destinations = response.destinationAddresses;
+  // Parse through the results, and get the distance and duration of each.
+  // Because there might be  multiple origins and destinations we have a nested loop
+  // Then, make sure at least 1 result was found.
+  let atLeastOne = false;
+  for (let i = 0; i < origins.length; i++) {
+    const results = response.rows[i].elements;
+    for (let j = 0; j < results.length; j++) {
+      const element = results[j];
+      if (element.status === "OK") {
+        // The distance is returned in feet, but the TEXT is in miles. If we wanted to switch
+        // the function to show markers within a user-entered DISTANCE, we would need the
+        // value for distance, but for now we only need the text.
+        const distanceText = element.distance.text;
+        // Duration value is given in seconds so we make it MINUTES. We need both the value
+        // and the text.
+        const duration = element.duration.value / 60;
+        const durationText = element.duration.text;
+        if (duration <= maxDuration) {
+          //the origin [i] should = the markers[i]
+          markers[i].setMap(map);
+          atLeastOne = true;
+          // Create a mini infowindow to open immediately and contain the
+          // distance and duration
+          const infowindow = new google.maps.InfoWindow({
+            content: durationText + ' away, ' + distanceText
+          });
+          infowindow.open(map, markers[i]);
+          // Put this in so that this small window closes if the user clicks
+          // the marker, when the big infowindow opens
+          markers[i].infowindow = infowindow;
+          google.maps.event.addListener(markers[i], 'click', function() {
+            this.infowindow.close();
+          });
+        }
+      }
+    }
+  }
+  if (!atLeastOne) {
+    window.alert('We could not find any locations within that distance!');
   }
 }
 
