@@ -2,7 +2,12 @@ let map;
 // Create a new blank array for all the listing markers.
 let markers = [];
 
-let polygon = null;
+// This global polygon variable is to ensure only ONE polygon is rendered.
+var polygon = null;
+
+// Create placemarkers array to use in multiple functions to have control
+// over the number of places that show.
+var placeMarkers = [];
 
 function initMap() {
 
@@ -35,6 +40,13 @@ function initMap() {
       document.getElementById('zoom-to-area-text'));
   //Bias the boundaries within the map for the zoom to area text.
   zoomAutocomplete.bindTo('bounds', map);
+
+  //Create a searchbox in order to execute a places search
+  let searchBox = new google.maps.places.SearchBox(
+    document.getElementById('places-search')
+    );
+  //Bias the searchbox to within the bounds of the map.
+  searchBox.setBounds(map.getBounds());
 
   /*These are the real estate listings that will be shown to the user.
     Normally we'd have these in a database instead.*/
@@ -93,7 +105,9 @@ function initMap() {
   });
 
   document.getElementById('show-listings').addEventListener('click', showListings);
-  document.getElementById('hide-listings').addEventListener('click', hideListings);
+  document.getElementById('hide-listings').addEventListener('click', function () {
+    hideMarkers(markers);
+  });
   document.getElementById('toggle-drawing').addEventListener('click', function() {
     toggleDrawing(drawingManager);
   });
@@ -103,6 +117,16 @@ function initMap() {
   document.getElementById('search-within-time').addEventListener('click', function () {
     searchWithinTime();
   })
+
+  // Listen for the event fired when the user selects a prediction from the
+  // picklist and retrieve more details for that place.
+  searchBox.addListener('places_changed', function() {
+    searchBoxPlaces(this);
+  });
+  // Listen for the event fired when the user selects a prediction and clicks
+  // "go" more details for that place.
+  document.getElementById('go-places').addEventListener('click', textSearchPlaces);
+
   
   /*Add an event listener so that the polygon is captured, call the searchWithinPolygon function. 
     This will show the markers in the polygon, and hide any outside of it.*/
@@ -111,7 +135,7 @@ function initMap() {
     If there is, get rid of it and remove the markers*/
     if (polygon) {
       polygon.setMap(null);
-      hideListings(markers);
+      hideMarkers(markers);
     }
     // Switching the drawing mode to the HAND (i.e., no longer drawing).
     drawingManager.setDrawingMode(null);
@@ -187,7 +211,8 @@ function showListings() {
   map.fitBounds(bounds);
 }
 // This function will loop through the listings and hide them all.
-function hideListings() {
+function hideMarkers(markers) {
+
   markers = markers.map((marker) => {
     marker.setMap(null);
     return marker;
@@ -270,7 +295,7 @@ function searchWithinTime() {
   if (address == '') {
     window.alert('You must enter an address.');
   } else {
-    hideListings();
+    hideMarkers(markers);
     // Use the distance matrix service to calculate the duration of the
     // routes between all our markers, and the destination address entered
     // by the user. Then put all the origins into an origin matrix.
@@ -347,7 +372,7 @@ function displayMarkersWithinTime(response) {
 // of the markers within the calculated distance. This will display the route
 // on the map.
 function displayDirections(origin) {
-  hideListings();
+  hideMarkers(markers);
   const directionsService = new google.maps.DirectionsService;
   // Get the destination address from the user entered value.
   const destinationAddress =
@@ -374,6 +399,72 @@ function displayDirections(origin) {
       window.alert('Directions request failed due to ' + status);
     }
   });
+}
+
+// This function fires when the user selects a searchbox picklist item.
+// It will do a nearby search using the selected query string or place.
+function searchBoxPlaces(searchBox) {
+  hideMarkers(placeMarkers);
+  const places = searchBox.getPlaces();
+  // For each place, get the icon, name and location.
+  createMarkersForPlaces(places);
+  if (places.length == 0) {
+    window.alert('We did not find any places matching that search!');
+  }
+}
+
+// This function firest when the user select "go" on the places search.
+// It will do a nearby search using the entered query string or place.
+function textSearchPlaces() {
+  const bounds = map.getBounds();
+  hideMarkers(placeMarkers);
+  const placesService = new google.maps.places.PlacesService(map);
+  placesService.textSearch({
+    query: document.getElementById('places-search').value,
+    bounds: bounds
+  }, function(results, status) {
+    if (status === google.maps.places.PlacesServiceStatus.OK) {
+      createMarkersForPlaces(results);
+    }
+  });
+}
+
+// This function creates markers for each place found in either places search.
+function createMarkersForPlaces(places) {
+  const bounds = new google.maps.LatLngBounds();
+  placeMarkers = places.map(place => {
+    const icon = {
+      url: place.icon,
+      size: new google.maps.Size(35, 35),
+      origin: new google.maps.Point(0, 0),
+      anchor: new google.maps.Point(15, 34),
+      scaledSize: new google.maps.Size(25, 25)
+    };
+
+    // Create a marker for each place.
+    const marker = new google.maps.Marker({
+      map: map,
+      icon: icon,
+      title: place.name,
+      position: place.geometry.location,
+      id: place.id
+    });
+
+    // If a marker is clicked, do a place details search on it in the next function.
+    marker.addListener('click', function() {
+      getPlacesDetails(this, place);
+    });
+
+    if (place.geometry.viewport) {
+      // Only geocodes have viewport.
+      bounds.union(place.geometry.viewport);
+    } else {
+      bounds.extend(place.geometry.location);
+    }
+
+    return marker;
+  });
+  map.fitBounds(bounds);
 }
 
 initMap();
