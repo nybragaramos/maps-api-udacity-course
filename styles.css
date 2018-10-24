@@ -20,12 +20,19 @@ body {
   margin: 0px;
 }
 
-input {
+input[type="button"] {
   font-size: 1em;
   height: 48px;
-  min-width: 116px;
+  min-width: 128px;
   max-width: 128px;
   margin: 4px 16px;
+}
+
+input[type="text"] {
+  font-size: 1em;
+  height: 48px;
+  min-width: 150px;
+  margin: 4px 0px;
 }
 
 h1 {
@@ -49,7 +56,7 @@ h1 {
   background: #fff;
   border: 1px solid #999;
   border-radius: 3px;
-  height: 194px;
+  height: 350px;
   line-height: 1.7em;
   padding: 16px 16px 8px 16px;
   text-align: left;
@@ -65,7 +72,7 @@ h1 {
   font-size: 12px;
 }
 
-.buttons-box {
+.inputs-box {
   display: flex; /* or inline-flex */
   flex-direction: row;
   flex-wrap: wrap;
@@ -74,7 +81,6 @@ h1 {
 
 #toggle-drawing {
 }
-
 
 /* Portrait */
 @media screen and (min-width: 768px) {
@@ -91,10 +97,10 @@ h1 {
 
 @media screen and (max-width: 355px) {
   .options-box {
-    height: 270px;
+    height: 350px;
   }
   #map {
-    height: calc(100% - 270px);
+    height: calc(100% - 350px);
   }
 
 }
