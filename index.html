@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="options-box">
+        <h1>Find Your New NYC Home</h1>
+        <div class="buttons-box">
+          <input id="show-listings" type="button" value="Show Listings" aria-label="Show Listings">
+          <input id="hide-listings" type="button" value="Hide Listings" aria-label="Hide Listings">
+        </div>
+        <hr>
+        <div class="buttons-box">
+          <input id="toggle-drawing" type="button" value="Drawing Tools" aria-label="Drawing Tools">
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?libraries=geometry,drawing&key=YOUR_KEY&callback=initMap">
+    </script>
+    <script src='app.js'></script>
+  </body>
+</html>
